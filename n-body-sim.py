@@ -7,8 +7,8 @@ class Settings:
         self.fps = 100
         self.resolution = (1280,720)
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.movement_factor = 0.4 # just how much we do at once.
-        self.shot_factor = 0.1
+        self.gravity_constant = 0.5 # just how much we do at once.
+        self.shot_factor = 0.3 # larger number = shorter line shoots faster
 
 class Body:
     def __init__(self, x, y, m=1):
@@ -33,18 +33,21 @@ class Body:
         self.move()
 
     def move(self):
-        self.x += self.v_x * settings.movement_factor
-        self.y += self.v_y * settings.movement_factor
+        self.x += self.v_x * settings.gravity_constant
+        self.y += self.v_y * settings.gravity_constant
 
 def main(settings, screen):
 
     clock = pygame.time.Clock()
+    pygame.display.set_caption(f"N-body simulation. Default mass: 1")
     bodies = []
     shot = None # this holds a coordinate that is then moved to bodies after you're done adjusting its speed.
     mouse_toggle = False
+    center_COM_toggle = True # if this is on, CENTER OF MASS is always kept centered.
     trails = []
     i = 0
     dot_count = 50 # per body
+    default_mass = 1
 
     while True:
 
@@ -65,6 +68,7 @@ def main(settings, screen):
         for k, trail in enumerate(trails):
             pygame.draw.circle(screen, (255 * (k/b), 255 * (k/b), 255 * (k/b)), trail, 1)
 
+        # draw the line and prospective body
         if mouse_toggle:
             pygame.draw.circle(screen, (255,0,0), shot, 5)
             pygame.draw.line(screen, (255,255,255), shot, pygame.mouse.get_pos())
@@ -77,7 +81,7 @@ def main(settings, screen):
                 mouse_toggle = False
                 x, y = pygame.mouse.get_pos()
                 velocity = ((shot[0] - x) * settings.shot_factor, (shot[1] - y) * settings.shot_factor)
-                body = Body(*shot)
+                body = Body(*shot, m=default_mass)
                 body.v_x, body.v_y = velocity
                 bodies.append(body)
                 trails.clear()
@@ -89,14 +93,13 @@ def main(settings, screen):
                     bodies.clear()
                     trails.clear()
                 elif e.key == pygame.K_SPACE:
-                    center_of_mass = (sum(body.x for body in bodies)/len(bodies), sum(body.y for body in bodies)/len(bodies))
-                    diff_x = settings.center[0] - center_of_mass[0]
-                    diff_y = settings.center[1] - center_of_mass[1]
-                    for body in bodies:
-                        body.x += diff_x
-                        body.y += diff_y
-                    for j, trail in enumerate(trails):
-                        trails[j] = (trail[0] + diff_x, trail[1] + diff_y)
+                    center_COM_toggle ^= True
+                elif e.key == pygame.K_PLUS:
+                    default_mass *= 2
+                    pygame.display.set_caption(f"N-body simulation. Default mass: {default_mass}")
+                elif e.key == pygame.K_MINUS:
+                    default_mass *= 1/2 if default_mass > 1 else 1
+                    pygame.display.set_caption(f"N-body simulation. Default mass: {default_mass}")
 
             elif e.type == pygame.QUIT:
                 exit()
@@ -104,12 +107,23 @@ def main(settings, screen):
             elif e.type == pygame.VIDEORESIZE:
                 settings.resolution = screen.get_size()
         
-        if i == 100:
+        if i == 200:
             i = 0
             for body in bodies:
                 if 0 > body.x or body.x > settings.resolution[0] or 0 > body.y or body.y > settings.resolution[1]:
                     bodies.remove(body)
-        
+
+        # automatically keep COM centered.
+        if center_COM_toggle and bodies:
+            center_of_mass = (sum(body.x for body in bodies)/len(bodies), sum(body.y for body in bodies)/len(bodies))
+            diff_x = settings.center[0] - center_of_mass[0]
+            diff_y = settings.center[1] - center_of_mass[1]
+            for body in bodies:
+                body.x += diff_x
+                body.y += diff_y
+            for j, trail in enumerate(trails):
+                trails[j] = (trail[0] + diff_x, trail[1] + diff_y)
+
         i += 1
         pygame.display.flip()
         clock.tick(settings.fps)
