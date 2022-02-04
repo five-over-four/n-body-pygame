@@ -7,30 +7,28 @@ class Settings:
         self.fps = 100
         self.resolution = (1280,720)
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.timestep = 0.1
-        self.movement_factor = 20
+        self.movement_factor = 0.05 # just how much we do at once.
 
 class Body:
-    def __init__(self, x, y):
+    def __init__(self, x, y, m=1):
         self.x = x
         self.y = y
+        self.m = m
         self.v_x = 0
         self.v_y = 0
 
     def acceleration(self, other):
         diff_vec = (self.x - other.x, self.y - other.y)
         norm = ((self.x-other.x)**2 + (self.y-other.y)**2)**(1/2)
-        return (settings.timestep * diff_vec[0]/norm**2, settings.timestep * diff_vec[1]/norm**2)
+        return (diff_vec[0]/norm**2, diff_vec[1]/norm**2)
 
     def tick(self, others):
-        delta_v = [] # list of tuples of velocity changes
         for body in others:
             if body == self:
                 continue
             accel = self.acceleration(body)
-            delta_v.append(accel)
-        self.v_x += sum(-v[0] for v in delta_v) # add all the velocity changes on n bodies.
-        self.v_y += sum(-v[1] for v in delta_v)
+            self.v_x += -body.m * accel[0]
+            self.v_y += -body.m * accel[1]
         self.move()
 
     def move(self):
@@ -40,7 +38,9 @@ class Body:
 def main(settings, screen):
 
     clock = pygame.time.Clock()
-    bodies = [] # [Body(**circ(0)), Body(**circ(1.2)), Body(**circ(4/3))]
+    bodies = []
+    bodies[1].v_x = 80
+    bodies[1].v_y = -20
     trails = []
     i = 0
     dot_count = 50 # per body
