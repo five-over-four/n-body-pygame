@@ -7,7 +7,7 @@ class Settings:
         self.fps = 100
         self.resolution = (1280,720)
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.gravity_constant = 0.05 # just how much we do at once.
+        self.gravity_constant = 0.5 # just how much we do at once.
         self.shot_factor = 0.03 # larger number = shorter line shoots faster
 
 class Body:
@@ -85,6 +85,8 @@ def main(settings, screen):
                 body = Body(*shot, m=default_mass)
                 body.v_x, body.v_y = velocity
                 bodies.append(body)
+                settings.gravity_constant = 10*min([1/body.m for body in bodies])
+                settings.shot_factor = 1/(settings.gravity_constant*30)
                 trails.clear()
 
             elif e.type == pygame.KEYDOWN:
