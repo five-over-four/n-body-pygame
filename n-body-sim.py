@@ -7,8 +7,8 @@ class Settings:
         self.fps = 100
         self.resolution = (1280,720)
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.gravity_constant = 0.5 # just how much we do at once.
-        self.shot_factor = 0.3 # larger number = shorter line shoots faster
+        self.gravity_constant = 0.05 # just how much we do at once.
+        self.shot_factor = 0.03 # larger number = shorter line shoots faster
 
 class Body:
     def __init__(self, x, y, m=1):
@@ -39,15 +39,16 @@ class Body:
 def main(settings, screen):
 
     clock = pygame.time.Clock()
-    pygame.display.set_caption(f"N-body simulation. Default mass: 1")
     bodies = []
     shot = None # this holds a coordinate that is then moved to bodies after you're done adjusting its speed.
     mouse_toggle = False
     center_COM_toggle = True # if this is on, CENTER OF MASS is always kept centered.
     trails = []
+    trail_density = 3 # lower is more dense, down to 1.
     i = 0
     dot_count = 50 # per body
-    default_mass = 1
+    default_mass = 4
+    pygame.display.set_caption(f"N-body simulation. Default mass: {default_mass}")
 
     while True:
 
@@ -59,7 +60,7 @@ def main(settings, screen):
             body.tick(bodies)
 
         # draw trails
-        if i % 5 == 0:
+        if i % trail_density == 0:
             for body in bodies:
                 trails.append((body.x,body.y))
             if len(trails) > len(bodies) * dot_count: # 50 dots per body
