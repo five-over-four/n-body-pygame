@@ -7,7 +7,8 @@ class Settings:
         self.fps = 100
         self.resolution = (1280,720)
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.movement_factor = 0.05 # just how much we do at once.
+        self.movement_factor = 0.4 # just how much we do at once.
+        self.shot_factor = 0.1
 
 class Body:
     def __init__(self, x, y, m=1):
@@ -39,8 +40,8 @@ def main(settings, screen):
 
     clock = pygame.time.Clock()
     bodies = []
-    bodies[1].v_x = 80
-    bodies[1].v_y = -20
+    shot = None # this holds a coordinate that is then moved to bodies after you're done adjusting its speed.
+    mouse_toggle = False
     trails = []
     i = 0
     dot_count = 50 # per body
@@ -48,11 +49,10 @@ def main(settings, screen):
     while True:
 
         screen.fill((0,0,0))
+
+        # draw and iterate the bodies.
         for body in bodies:
             pygame.draw.circle(screen, (255,255,255), (body.x, body.y), 5)
-            #pygame.draw.circle(screen, (255,255,255), com , 3)
-
-        for body in bodies:
             body.tick(bodies)
 
         # draw trails
@@ -63,11 +63,23 @@ def main(settings, screen):
                 trails = trails[len(bodies):]
         b = len(trails)
         for k, trail in enumerate(trails):
-            pygame.draw.circle(screen, (255 * (k/b),255 * (k/b),255 * (k/b)), trail, 1)
+            pygame.draw.circle(screen, (255 * (k/b), 255 * (k/b), 255 * (k/b)), trail, 1)
+
+        if mouse_toggle:
+            pygame.draw.circle(screen, (255,0,0), shot, 5)
+            pygame.draw.line(screen, (255,255,255), shot, pygame.mouse.get_pos())
 
         for e in pygame.event.get():
             if e.type == pygame.MOUSEBUTTONDOWN:
-                bodies.append(Body(*pygame.mouse.get_pos()))
+                mouse_toggle = True
+                shot = pygame.mouse.get_pos()
+            if e.type == pygame.MOUSEBUTTONUP:
+                mouse_toggle = False
+                x, y = pygame.mouse.get_pos()
+                velocity = ((shot[0] - x) * settings.shot_factor, (shot[1] - y) * settings.shot_factor)
+                body = Body(*shot)
+                body.v_x, body.v_y = velocity
+                bodies.append(body)
                 trails.clear()
 
             elif e.type == pygame.KEYDOWN:
