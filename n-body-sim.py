@@ -7,15 +7,15 @@ class Settings:
         self.fps = 100
         self.resolution = (1280,720)
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.gravity_constant = 0.5 # just how much we do at once.
-        self.shot_factor = 0.03 # larger number = shorter line shoots faster
+        self.gravity_constant = 0.01 # just how much we do at once.
+        self.shot_factor = 3 # larger number means more sensitive shooting.
 
 class Body:
     def __init__(self, x, y, m=1):
         self.x = x
         self.y = y
         self.m = m
-        self.v_x = 0
+        self.v_x = 0 # velocity components x and y.
         self.v_y = 0
 
     def acceleration(self, other):
@@ -40,15 +40,15 @@ def main(settings, screen):
 
     clock = pygame.time.Clock()
     bodies = []
-    shot = None # this holds a coordinate that is then moved to bodies after you're done adjusting its speed.
+    shot = None                 # position of the placed body.
     mouse_toggle = False
-    center_COM_toggle = True # if this is on, CENTER OF MASS is always kept centered.
+    center_COM_toggle = True    # system CENTER OF MASS is always kept centered.
     trails = []
-    trail_density = 3 # lower is more dense, down to 1.
-    i = 0
-    dot_count = 50 # per body
-    default_mass = 4
-    pygame.display.set_caption(f"N-body simulation. Default mass: {default_mass}")
+    trail_density = 5           # lower is more dense, >=1.
+    dot_count = 50              # per body
+    default_mass = 32
+    i = 0                       # just counts some stuff in the loop.
+    pygame.display.set_caption(f"N-body simulation. Default mass: {float(default_mass)}")
 
     while True:
 
@@ -63,11 +63,12 @@ def main(settings, screen):
         if i % trail_density == 0:
             for body in bodies:
                 trails.append((body.x,body.y))
-            if len(trails) > len(bodies) * dot_count: # 50 dots per body
-                trails = trails[len(bodies):]
+            if len(trails) > len(bodies) * dot_count: # dot_count dots per trail.
+                trails = trails[len(bodies)-1:]
         b = len(trails)
         for k, trail in enumerate(trails):
-            pygame.draw.circle(screen, (255 * (k/b), 255 * (k/b), 255 * (k/b)), trail, 1)
+            factor = (k % b) / b # makes sure the brightness is correct for each dot.
+            pygame.draw.circle(screen, (255 * factor, 255 * factor, 255 * factor), trail, 1)
 
         # draw the line and prospective body
         if mouse_toggle:
@@ -85,8 +86,6 @@ def main(settings, screen):
                 body = Body(*shot, m=default_mass)
                 body.v_x, body.v_y = velocity
                 bodies.append(body)
-                settings.gravity_constant = 10*min([1/body.m for body in bodies])
-                settings.shot_factor = 1/(settings.gravity_constant*30)
                 trails.clear()
 
             elif e.type == pygame.KEYDOWN:
@@ -109,12 +108,7 @@ def main(settings, screen):
 
             elif e.type == pygame.VIDEORESIZE:
                 settings.resolution = screen.get_size()
-        
-        if i == 200:
-            i = 0
-            for body in bodies:
-                if 0 > body.x or body.x > settings.resolution[0] or 0 > body.y or body.y > settings.resolution[1]:
-                    bodies.remove(body)
+                settings.center = settings.resolution[0]/2, settings.resolution[1]/2
 
         # automatically keep COM centered.
         if center_COM_toggle and bodies:
@@ -126,6 +120,13 @@ def main(settings, screen):
                 body.y += diff_y
             for j, trail in enumerate(trails):
                 trails[j] = (trail[0] + diff_x, trail[1] + diff_y)
+
+        # removes off-screen bodies every 200 frames.
+        if i == 200:
+            i = 0
+            for body in bodies: # remove off-screen bodies.
+                if 0 > body.x or body.x > settings.resolution[0] or 0 > body.y or body.y > settings.resolution[1]:
+                    bodies.remove(body)
 
         i += 1
         pygame.display.flip()
