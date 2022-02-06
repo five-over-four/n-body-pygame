@@ -185,6 +185,12 @@ def main(settings, screen):
                     shot = pygame.mouse.get_pos()
                 elif e.button == 3: # right click.
                     bodies = remove_body(pygame.mouse.get_pos(), bodies)
+                elif e.button == 4: # scroll up.
+                    settings.default_mass *= 2
+                elif e.button == 5: # scroll down.
+                    settings.default_mass *= 1/2 if settings.default_mass > 1 else 1
+                update_caption(paused)
+
             if e.type == pygame.MOUSEBUTTONUP:
                 if e.button == 1: # left click.
                     mouse_toggle = False
