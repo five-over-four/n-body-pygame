@@ -156,7 +156,6 @@ def main(settings, screen):
                 factor = i/settings.trail_length
                 pygame.draw.circle(screen, [component * factor for component in settings.trail_colour], pos, 1)
                 
-
         # draw the line and prospective body.
         if mouse_toggle:
             pygame.draw.circle(screen, (255,0,0), shot, 5)
