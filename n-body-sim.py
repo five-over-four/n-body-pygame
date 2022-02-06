@@ -21,8 +21,6 @@ class Settings:
         else:
             self.config_file = None
         self.load()
-        self.fps = 100
-        self.resolution = (1280,720)
         self.center = self.resolution[0]/2, self.resolution[1]/2
         self.gravity_constant = 0.01 # just how much we do at once.
         self.shot_factor = 3 # larger number means more sensitive shooting.
@@ -39,6 +37,9 @@ class Settings:
                 self.trail_colour = colours[s["trail_colour"]]
                 self.resolution = (int(res_temp[0]), int(res_temp[1]))
                 self.fps = int(s["framerate"])
+                self.trail_density = int(s["trail_density"])
+                self.trail_length = int(s["trail_length"])
+                self.default_mass = int(s["default_mass"])
             except Exception as e:
                 print(f"settings.json contains erronerous data.\nloading defaults...{e}")
                 self.load_defaults()
@@ -51,6 +52,9 @@ class Settings:
         self.trail_colour = (255,255,255)
         self.resolution = (1280,720)
         self.fps = 100
+        self.trail_density = 3
+        self.trail_length = 100
+        self.default_mass = 32
 
 class Body:
     def __init__(self, x, y, m=1, v_x=0, v_y=0):
@@ -102,11 +106,11 @@ def save_system(bodies):
         for body in bodies:
             f.write(f"{body.x},{body.y},{body.m},{body.v_x},{body.v_y}\n")
 
-def update_caption(paused, default_mass):
+def update_caption(paused):
     if paused:
-        pygame.display.set_caption(f"N-body simulation. Default mass: {int(default_mass)} (PAUSED)")
+        pygame.display.set_caption(f"N-body simulation. Default mass: {settings.default_mass} (PAUSED)")
     else:
-        pygame.display.set_caption(f"N-body simulation. Default mass: {int(default_mass)} (PLAYING)")
+        pygame.display.set_caption(f"N-body simulation. Default mass: {settings.default_mass} (PLAYING)")
 
 def remove_body(pos, bodies):
     for body in bodies:
@@ -123,12 +127,9 @@ def main(settings, screen):
     mouse_toggle = False
     center_COM_toggle = True    # system CENTER OF MASS is always kept centered.
     paused = False
-    trail_density = 3           # lower is more dense, >=1.
-    max_trail = 100              # per body
-    default_mass = 32
     counter = 0                 # modular with trail_density.
     body_removal_timer = 200    # in frames.
-    update_caption(paused, default_mass)
+    update_caption(paused)
 
     while True:
 
@@ -141,18 +142,18 @@ def main(settings, screen):
             pygame.draw.circle(screen, settings.body_colour, (body.x, body.y), 5)
 
         # make trails and drop fading tail end.
-        if counter % trail_density == 0 and not paused:
+        if counter % settings.trail_density == 0 and not paused:
             for body in bodies:
                 body.trail.append((body.x,body.y))
                 body.trail_length += 1
-                if body.trail_length > max_trail:
+                if body.trail_length > settings.trail_length:
                     body.trail.popleft()
                     body.trail_length -= 1
 
         # draw the trails.
         for body in bodies:
             for i, pos in enumerate(body.trail):
-                factor = i/max_trail
+                factor = i/settings.trail_length
                 pygame.draw.circle(screen, [component * factor for component in settings.trail_colour], pos, 1)
                 
 
@@ -175,7 +176,7 @@ def main(settings, screen):
                     mouse_toggle = False
                     x, y = pygame.mouse.get_pos()
                     velocity = ((shot[0] - x) * settings.shot_factor, (shot[1] - y) * settings.shot_factor)
-                    body = Body(*shot, m=default_mass)
+                    body = Body(*shot, m=settings.default_mass)
                     body.v_x, body.v_y = velocity
                     bodies.append(body)
 
@@ -188,16 +189,16 @@ def main(settings, screen):
                 elif e.key == pygame.K_f:
                     center_COM_toggle ^= True
                 elif e.key == pygame.K_PLUS:
-                    default_mass *= 2
+                    settings.default_mass *= 2
                 elif e.key == pygame.K_MINUS:
-                    default_mass *= 1/2 if default_mass > 1 else 1
+                    settings.default_mass *= 1/2 if settings.default_mass > 1 else 1
                 elif e.key == pygame.K_l:
                     bodies = load_system()
                 elif e.key == pygame.K_s:
                     save_system(bodies)
                 if e.key == pygame.K_ESCAPE:
                     exit()
-                update_caption(paused, default_mass)
+                update_caption(paused)
 
             elif e.type == pygame.QUIT:
                 exit()
@@ -227,7 +228,7 @@ def main(settings, screen):
                     bodies.remove(body)
 
         body_removal_timer += 1
-        counter = (counter + 1) % trail_density
+        counter = (counter + 1) % settings.trail_density
         pygame.display.flip()
         clock.tick(settings.fps)
 

@@ -3,5 +3,8 @@
     "body_colour": "white",
     "trail_colour": "white",
     "resolution": "1280,720",
-    "framerate": "100"
+    "framerate": "100",
+    "trail_density": "3",
+    "trail_length": "100",
+    "default_mass": "32"
 }
