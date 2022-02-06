@@ -154,7 +154,8 @@ def main(settings, screen):
         for body in bodies:
             for i, pos in enumerate(body.trail):
                 factor = i/settings.trail_length
-                pygame.draw.circle(screen, [component * factor for component in settings.trail_colour], pos, 1)
+                colour = [trail * factor + bg * (1 - factor) for trail, bg in zip(settings.trail_colour, settings.bg_colour)]
+                pygame.draw.circle(screen, colour, pos, 1)
                 
         # draw the line and prospective body.
         if mouse_toggle:
