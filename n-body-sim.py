@@ -1,14 +1,56 @@
 import pygame
 from collections import deque
+import json, os
 
-# under the hood
+# colour standards. chosen in settings.json.
+colours = { "black": (0,0,0), "white": (255,255,255), "red": (255,0,0), \
+            "green": (0,255,0), "blue": (0,0,255), "purple": (170,0,255), \
+            "yellow": (255,255,0), "dark_red": (40,0,0), "dark_green": (0,40,0), \
+            "dark_blue": (0,0,40), "grey": (130,130,130), "dark_grey": (30,30,30)
+          }
+
+# global settings singleton.
 class Settings:
     def __init__(self):
+        self.path = os.path.dirname(os.path.realpath(__file__))
+        self.directory = os.listdir(self.path)
+        if "dev_settings.json" in self.directory:
+            self.config_file = self.path + "/dev_settings.json"
+        elif "settings.json" in self.directory:
+            self.config_file = self.path + "/settings.json"
+        else:
+            self.config_file = None
+        self.load()
         self.fps = 100
         self.resolution = (1280,720)
         self.center = self.resolution[0]/2, self.resolution[1]/2
         self.gravity_constant = 0.01 # just how much we do at once.
         self.shot_factor = 3 # larger number means more sensitive shooting.
+    
+    def load(self):
+        if self.config_file:
+            with open(self.config_file) as f:
+                    data = f.read()
+            s = json.loads(data)
+            try:
+                res_temp = s["resolution"].split(",")
+                self.bg_colour = colours[s["bg_colour"]]
+                self.body_colour = colours[s["body_colour"]]
+                self.trail_colour = colours[s["trail_colour"]]
+                self.resolution = (int(res_temp[0]), int(res_temp[1]))
+                self.fps = int(s["framerate"])
+            except Exception as e:
+                print(f"settings.json contains erronerous data.\nloading defaults...{e}")
+                self.load_defaults()
+        else:
+            self.load_defaults()
+
+    def load_defaults(self):
+        self.bg_colour = (0,0,0)
+        self.body_colour = (255,255,255)
+        self.trail_colour = (255,255,255)
+        self.resolution = (1280,720)
+        self.fps = 100
 
 class Body:
     def __init__(self, x, y, m=1, v_x=0, v_y=0):
@@ -90,13 +132,13 @@ def main(settings, screen):
 
     while True:
 
-        screen.fill((0,0,0))
+        screen.fill(settings.bg_colour)
 
         # draw and iterate the bodies.
         for body in bodies:
             if not paused:
                 body.tick(bodies)
-            pygame.draw.circle(screen, (255,255,255), (body.x, body.y), 5)
+            pygame.draw.circle(screen, settings.body_colour, (body.x, body.y), 5)
 
         # make trails and drop fading tail end.
         if counter % trail_density == 0 and not paused:
@@ -111,7 +153,8 @@ def main(settings, screen):
         for body in bodies:
             for i, pos in enumerate(body.trail):
                 factor = i/max_trail
-                pygame.draw.circle(screen, (255 * factor, 255 * factor, 255 * factor), pos, 1)
+                pygame.draw.circle(screen, [component * factor for component in settings.trail_colour], pos, 1)
+                
 
         # draw the line and prospective body.
         if mouse_toggle:
