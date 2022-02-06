@@ -206,10 +206,11 @@ def main(settings, screen):
                     if settings.realistic_gravity:
                         settings.gravity_constant = 0.1
                         settings.shot_factor = 0.3
+                        print("realistic gravity on. (1/r^2)")
                     else:
                         settings.gravity_constant = 0.01
                         settings.shot_factor = 18
-                    print(settings.realistic_gravity, settings.gravity_constant)
+                        print("realistic gravity off. (1/r)")
                 elif e.key == pygame.K_PLUS:
                     settings.default_mass *= 2
                 elif e.key == pygame.K_MINUS:
