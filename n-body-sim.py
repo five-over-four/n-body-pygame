@@ -54,7 +54,7 @@ def load_system():
             pass
     return loaded_bodies
 
-# puts the current positions and masses into the save.data file.
+# puts the current positions, masses, and velocities into save.data.
 def save_system(bodies):
     with open("save.data", "w") as f:
         for body in bodies:
@@ -94,9 +94,9 @@ def main(settings, screen):
 
         # draw and iterate the bodies.
         for body in bodies:
-            pygame.draw.circle(screen, (255,255,255), (body.x, body.y), 5)
             if not paused:
                 body.tick(bodies)
+            pygame.draw.circle(screen, (255,255,255), (body.x, body.y), 5)
 
         # make trails and drop fading tail end.
         if counter % trail_density == 0 and not paused:
