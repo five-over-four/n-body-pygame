@@ -21,9 +21,10 @@ class Settings:
         else:
             self.config_file = None
         self.load()
+        self.softening_constant = 10 # avoids singularities in our gravity modelling.
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.gravity_constant = 0.01 # just how much we do at once.
-        self.shot_factor = 3 # larger number means more sensitive shooting.
+        self.gravity_constant = 0.01 # strength of gravity.
+        self.shot_factor = 1 # larger number means more sensitive shooting.
     
     def load(self):
         if self.config_file:
@@ -40,6 +41,7 @@ class Settings:
                 self.trail_density = int(s["trail_density"])
                 self.trail_length = int(s["trail_length"])
                 self.default_mass = int(s["default_mass"])
+                self.realistic_gravity = bool(int(s["realistic_gravity"]))
             except Exception as e:
                 print(f"settings.json contains erronerous data.\nloading defaults...{e}")
                 self.load_defaults()
@@ -55,6 +57,7 @@ class Settings:
         self.trail_density = 3
         self.trail_length = 100
         self.default_mass = 32
+        self.realistic_gravity = 0
 
 class Body:
     def __init__(self, x, y, m=1, v_x=0, v_y=0):
@@ -68,8 +71,11 @@ class Body:
 
     def acceleration(self, other):
         diff_vec = (self.x - other.x, self.y - other.y)
-        norm = ((self.x-other.x)**2 + (self.y-other.y)**2)**(1/2)
-        return (diff_vec[0]/norm**2, diff_vec[1]/norm**2)
+        norm = ((self.x-other.x)**2 + (self.y-other.y)**2 + settings.softening_constant**2)**(1/2)
+        if not settings.realistic_gravity:
+            return (diff_vec[0]/norm**2, diff_vec[1]/norm**2)
+        else:
+            return (diff_vec[0]/norm**3, diff_vec[1]/norm**3)
 
     def tick(self, others):
         for body in others:
@@ -188,6 +194,15 @@ def main(settings, screen):
                     paused ^= True
                 elif e.key == pygame.K_f:
                     center_COM_toggle ^= True
+                elif e.key == pygame.K_r:
+                    settings.realistic_gravity ^= True
+                    if settings.realistic_gravity:
+                        settings.gravity_constant = 0.1
+                        settings.shot_factor = 0.3
+                    else:
+                        settings.gravity_constant = 0.01
+                        settings.shot_factor = 18
+                    print(settings.realistic_gravity, settings.gravity_constant)
                 elif e.key == pygame.K_PLUS:
                     settings.default_mass *= 2
                 elif e.key == pygame.K_MINUS:

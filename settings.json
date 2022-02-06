@@ -6,5 +6,6 @@
     "framerate": "100",
     "trail_density": "3",
     "trail_length": "100",
-    "default_mass": "32"
+    "default_mass": "32",
+    "realistic_gravity": "0"
 }
