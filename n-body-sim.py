@@ -1,4 +1,5 @@
 import pygame
+from collections import deque
 
 # under the hood
 class Settings:
@@ -16,6 +17,8 @@ class Body:
         self.m = m
         self.v_x = v_x # velocity components.
         self.v_y = v_y
+        self.trail = deque([]) # fast removal of first element.
+        self.trail_length = 0 # bit more efficient than computing len.
 
     def acceleration(self, other):
         diff_vec = (self.x - other.x, self.y - other.y)
@@ -35,7 +38,8 @@ class Body:
         self.x += self.v_x * settings.gravity_constant
         self.y += self.v_y * settings.gravity_constant
 
-def load_system(): # format: x-pos,y-pos,mass,x-velocity,y-velocity. one body per row. ex. 200,200,24.5,-4,2
+# format: x-pos,y-pos,mass,x-velocity,y-velocity. one body per row. ex. 200,200,24.5,-4,2
+def load_system():
     import os
     path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(path)
@@ -50,7 +54,8 @@ def load_system(): # format: x-pos,y-pos,mass,x-velocity,y-velocity. one body pe
             pass
     return loaded_bodies
 
-def save_system(bodies): # puts the current positions and masses into the save.data file.
+# puts the current positions and masses into the save.data file.
+def save_system(bodies):
     with open("save.data", "w") as f:
         for body in bodies:
             f.write(f"{body.x},{body.y},{body.m},{body.v_x},{body.v_y}\n")
@@ -61,6 +66,13 @@ def update_caption(paused, default_mass):
     else:
         pygame.display.set_caption(f"N-body simulation. Default mass: {int(default_mass)} (PLAYING)")
 
+def remove_body(pos, bodies):
+    for body in bodies:
+        if ((pos[0] - body.x)**2 + (pos[1] - body.y)**2)**(1/2) <= 5:
+            bodies.remove(body)
+            break
+    return bodies
+
 def main(settings, screen):
 
     clock = pygame.time.Clock()
@@ -69,11 +81,11 @@ def main(settings, screen):
     mouse_toggle = False
     center_COM_toggle = True    # system CENTER OF MASS is always kept centered.
     paused = False
-    trails = []
     trail_density = 3           # lower is more dense, >=1.
-    dot_count = 50              # per body
+    max_trail = 100              # per body
     default_mass = 32
-    i = 0                       # just counts some stuff in the loop.
+    counter = 0                 # modular with trail_density.
+    body_removal_timer = 200    # in frames.
     update_caption(paused, default_mass)
 
     while True:
@@ -86,59 +98,63 @@ def main(settings, screen):
             if not paused:
                 body.tick(bodies)
 
-        # make trails.
-        if i % trail_density == 0 and not paused:
+        # make trails and drop fading tail end.
+        if counter % trail_density == 0 and not paused:
             for body in bodies:
-                trails.append((body.x,body.y))
-            if len(trails) > len(bodies) * dot_count: # dot_count dots per trail.
-                trails = trails[len(bodies)-1:]
-        
-        # actually draw trails.
-        b = len(trails)
-        for k, trail in enumerate(trails):
-            factor = (k % b) / b # makes sure the brightness is correct for each dot.
-            pygame.draw.circle(screen, (255 * factor, 255 * factor, 255 * factor), trail, 1)
+                body.trail.append((body.x,body.y))
+                body.trail_length += 1
+                if body.trail_length > max_trail:
+                    body.trail.popleft()
+                    body.trail_length -= 1
+
+        # draw the trails.
+        for body in bodies:
+            for i, pos in enumerate(body.trail):
+                factor = i/max_trail
+                pygame.draw.circle(screen, (255 * factor, 255 * factor, 255 * factor), pos, 1)
 
         # draw the line and prospective body.
         if mouse_toggle:
             pygame.draw.circle(screen, (255,0,0), shot, 5)
             pygame.draw.line(screen, (255,255,255), shot, pygame.mouse.get_pos())
 
+        # CONTROL SEGMENT.
         for e in pygame.event.get():
+
             if e.type == pygame.MOUSEBUTTONDOWN:
-                mouse_toggle = True
-                shot = pygame.mouse.get_pos()
+                if e.button == 1: # left click.
+                    mouse_toggle = True
+                    shot = pygame.mouse.get_pos()
+                elif e.button == 3: # right click.
+                    bodies = remove_body(pygame.mouse.get_pos(), bodies)
             if e.type == pygame.MOUSEBUTTONUP:
-                mouse_toggle = False
-                x, y = pygame.mouse.get_pos()
-                velocity = ((shot[0] - x) * settings.shot_factor, (shot[1] - y) * settings.shot_factor)
-                body = Body(*shot, m=default_mass)
-                body.v_x, body.v_y = velocity
-                bodies.append(body)
-                trails.clear()
+                if e.button == 1: # left click.
+                    mouse_toggle = False
+                    x, y = pygame.mouse.get_pos()
+                    velocity = ((shot[0] - x) * settings.shot_factor, (shot[1] - y) * settings.shot_factor)
+                    body = Body(*shot, m=default_mass)
+                    body.v_x, body.v_y = velocity
+                    bodies.append(body)
 
             elif e.type == pygame.KEYDOWN:
+
                 if e.key == pygame.K_DELETE:
                     bodies.clear()
-                    trails.clear()
                 elif e.key == pygame.K_SPACE:
                     paused ^= True
-                    update_caption(paused, default_mass)
                 elif e.key == pygame.K_f:
                     center_COM_toggle ^= True
                 elif e.key == pygame.K_PLUS:
                     default_mass *= 2
-                    update_caption(paused, default_mass)
                 elif e.key == pygame.K_MINUS:
                     default_mass *= 1/2 if default_mass > 1 else 1
-                    update_caption(paused, default_mass)
                 elif e.key == pygame.K_l:
                     bodies = load_system()
-                    trails.clear()
                 elif e.key == pygame.K_s:
                     save_system(bodies)
                 if e.key == pygame.K_ESCAPE:
                     exit()
+                update_caption(paused, default_mass)
 
             elif e.type == pygame.QUIT:
                 exit()
@@ -147,7 +163,7 @@ def main(settings, screen):
                 settings.resolution = screen.get_size()
                 settings.center = settings.resolution[0]/2, settings.resolution[1]/2
 
-        # automatically keep COM centered.
+        # automatically keep COM centered. (actually not COM, doesn't take mass into account).
         if center_COM_toggle and bodies:
             center_of_mass = (sum(body.x for body in bodies)/len(bodies), sum(body.y for body in bodies)/len(bodies))
             diff_x = settings.center[0] - center_of_mass[0]
@@ -155,17 +171,20 @@ def main(settings, screen):
             for body in bodies:
                 body.x += diff_x
                 body.y += diff_y
-            for j, trail in enumerate(trails):
-                trails[j] = (trail[0] + diff_x, trail[1] + diff_y)
+                new_trail = deque([])
+                for pos in body.trail:
+                    new_trail.append((pos[0] + diff_x, pos[1] + diff_y))
+                body.trail = new_trail
 
         # removes off-screen bodies every 200 frames.
-        if i == 200:
-            i = 0
+        if body_removal_timer == 200:
+            body_removal_timer = 0
             for body in bodies: # remove off-screen bodies.
                 if 0 > body.x or body.x > settings.resolution[0] or 0 > body.y or body.y > settings.resolution[1]:
                     bodies.remove(body)
 
-        i += 1
+        body_removal_timer += 1
+        counter = (counter + 1) % trail_density
         pygame.display.flip()
         clock.tick(settings.fps)
 
