@@ -43,6 +43,7 @@ def main(settings, screen):
     shot = None                 # position of the placed body.
     mouse_toggle = False
     center_COM_toggle = True    # system CENTER OF MASS is always kept centered.
+    paused = False
     trails = []
     trail_density = 5           # lower is more dense, >=1.
     dot_count = 50              # per body
@@ -57,7 +58,8 @@ def main(settings, screen):
         # draw and iterate the bodies.
         for body in bodies:
             pygame.draw.circle(screen, (255,255,255), (body.x, body.y), 5)
-            body.tick(bodies)
+            if not paused:
+                body.tick(bodies)
 
         # draw trails
         if i % trail_density == 0:
@@ -89,12 +91,12 @@ def main(settings, screen):
                 trails.clear()
 
             elif e.type == pygame.KEYDOWN:
-                if e.key == pygame.K_ESCAPE:
-                    exit()
-                elif e.key == pygame.K_DELETE:
+                if e.key == pygame.K_DELETE:
                     bodies.clear()
                     trails.clear()
                 elif e.key == pygame.K_SPACE:
+                    paused ^= True
+                elif e.key == pygame.K_f:
                     center_COM_toggle ^= True
                 elif e.key == pygame.K_PLUS:
                     default_mass *= 2
@@ -102,6 +104,8 @@ def main(settings, screen):
                 elif e.key == pygame.K_MINUS:
                     default_mass *= 1/2 if default_mass > 1 else 1
                     pygame.display.set_caption(f"N-body simulation. Default mass: {default_mass}")
+                if e.key == pygame.K_ESCAPE:
+                    exit()
 
             elif e.type == pygame.QUIT:
                 exit()
