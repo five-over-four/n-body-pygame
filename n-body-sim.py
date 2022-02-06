@@ -21,7 +21,7 @@ class Settings:
         else:
             self.config_file = None
         self.load()
-        self.softening_constant = 10 # avoids singularities in our gravity modelling.
+        self.softening_constant = 15 # avoids singularities in our gravity modelling.
         self.center = self.resolution[0]/2, self.resolution[1]/2
         self.gravity_constant = 0.01 # strength of gravity.
         self.shot_factor = 1 # larger number means more sensitive shooting.
@@ -71,11 +71,12 @@ class Body:
 
     def acceleration(self, other):
         diff_vec = (self.x - other.x, self.y - other.y)
-        norm = ((self.x-other.x)**2 + (self.y-other.y)**2 + settings.softening_constant**2)**(1/2)
+        norm = (self.x-other.x)**2 + (self.y-other.y)**2
+        kernel = softening_kernel(norm)
         if not settings.realistic_gravity:
-            return (diff_vec[0]/norm**2, diff_vec[1]/norm**2)
+            return (diff_vec[0]/(norm+kernel), diff_vec[1]/(norm+kernel))
         else:
-            return (diff_vec[0]/norm**3, diff_vec[1]/norm**3)
+            return (diff_vec[0]/(norm+kernel**2)**(3/2), diff_vec[1]/(norm+kernel**2)**(3/2))
 
     def tick(self, others):
         for body in others:
@@ -89,6 +90,12 @@ class Body:
     def move(self):
         self.x += self.v_x * settings.gravity_constant
         self.y += self.v_y * settings.gravity_constant
+
+# returns softening factor based on distance.
+def softening_kernel(d): 
+    if d <= settings.softening_constant:
+        return (settings.softening_constant - d) * settings.softening_constant
+    return 0
 
 # format: x-pos,y-pos,mass,x-velocity,y-velocity. one body per row. ex. 200,200,24.5,-4,2
 def load_system():
