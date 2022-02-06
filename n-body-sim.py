@@ -23,8 +23,8 @@ class Settings:
         self.load()
         self.softening_constant = 15 # avoids singularities in our gravity modelling.
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.gravity_constant = 0.01 # strength of gravity.
-        self.shot_factor = 1 # larger number means more sensitive shooting.
+        self.gravity_constant = 0.01 # strength of gravity
+        self.shot_factor = 18 # for some reason, the strength of the shot depends on gravity.
     
     def load(self):
         if self.config_file:
@@ -205,7 +205,7 @@ def main(settings, screen):
                     settings.realistic_gravity ^= True
                     if settings.realistic_gravity:
                         settings.gravity_constant = 0.1
-                        settings.shot_factor = 0.3
+                        settings.shot_factor = 0.18
                         print("realistic gravity on. (1/r^2)")
                     else:
                         settings.gravity_constant = 0.01
