@@ -1,5 +1,4 @@
 import pygame
-import math
 
 # under the hood
 class Settings:
@@ -11,12 +10,12 @@ class Settings:
         self.shot_factor = 3 # larger number means more sensitive shooting.
 
 class Body:
-    def __init__(self, x, y, m=1):
+    def __init__(self, x, y, m=1, v_x=0, v_y=0):
         self.x = x
         self.y = y
         self.m = m
-        self.v_x = 0 # velocity components x and y.
-        self.v_y = 0
+        self.v_x = v_x # velocity components.
+        self.v_y = v_y
 
     def acceleration(self, other):
         diff_vec = (self.x - other.x, self.y - other.y)
@@ -36,6 +35,32 @@ class Body:
         self.x += self.v_x * settings.gravity_constant
         self.y += self.v_y * settings.gravity_constant
 
+def load_system(): # format: x-pos,y-pos,mass,x-velocity,y-velocity. one body per row. ex. 200,200,24.5,-4,2
+    import os
+    path = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(path)
+    loaded_bodies = []
+    if "save.data" in os.listdir(path):
+        with open("save.data", "r") as f:
+            data = f.readlines()
+            for line in data:
+                loaded_bodies.append(Body(*[float(x) for x in line.split(",")]))
+    else:
+        with open("save.data", "w") as f:
+            pass
+    return loaded_bodies
+
+def save_system(bodies): # puts the current positions and masses into the save.data file.
+    with open("save.data", "w") as f:
+        for body in bodies:
+            f.write(f"{body.x},{body.y},{body.m},{body.v_x},{body.v_y}\n")
+
+def update_caption(paused, default_mass):
+    if paused:
+        pygame.display.set_caption(f"N-body simulation. Default mass: {int(default_mass)} (PAUSED)")
+    else:
+        pygame.display.set_caption(f"N-body simulation. Default mass: {int(default_mass)} (PLAYING)")
+
 def main(settings, screen):
 
     clock = pygame.time.Clock()
@@ -45,11 +70,11 @@ def main(settings, screen):
     center_COM_toggle = True    # system CENTER OF MASS is always kept centered.
     paused = False
     trails = []
-    trail_density = 5           # lower is more dense, >=1.
+    trail_density = 3           # lower is more dense, >=1.
     dot_count = 50              # per body
     default_mass = 32
     i = 0                       # just counts some stuff in the loop.
-    pygame.display.set_caption(f"N-body simulation. Default mass: {float(default_mass)}")
+    update_caption(paused, default_mass)
 
     while True:
 
@@ -61,18 +86,20 @@ def main(settings, screen):
             if not paused:
                 body.tick(bodies)
 
-        # draw trails
-        if i % trail_density == 0:
+        # make trails.
+        if i % trail_density == 0 and not paused:
             for body in bodies:
                 trails.append((body.x,body.y))
             if len(trails) > len(bodies) * dot_count: # dot_count dots per trail.
                 trails = trails[len(bodies)-1:]
+        
+        # actually draw trails.
         b = len(trails)
         for k, trail in enumerate(trails):
             factor = (k % b) / b # makes sure the brightness is correct for each dot.
             pygame.draw.circle(screen, (255 * factor, 255 * factor, 255 * factor), trail, 1)
 
-        # draw the line and prospective body
+        # draw the line and prospective body.
         if mouse_toggle:
             pygame.draw.circle(screen, (255,0,0), shot, 5)
             pygame.draw.line(screen, (255,255,255), shot, pygame.mouse.get_pos())
@@ -96,14 +123,20 @@ def main(settings, screen):
                     trails.clear()
                 elif e.key == pygame.K_SPACE:
                     paused ^= True
+                    update_caption(paused, default_mass)
                 elif e.key == pygame.K_f:
                     center_COM_toggle ^= True
                 elif e.key == pygame.K_PLUS:
                     default_mass *= 2
-                    pygame.display.set_caption(f"N-body simulation. Default mass: {default_mass}")
+                    update_caption(paused, default_mass)
                 elif e.key == pygame.K_MINUS:
                     default_mass *= 1/2 if default_mass > 1 else 1
-                    pygame.display.set_caption(f"N-body simulation. Default mass: {default_mass}")
+                    update_caption(paused, default_mass)
+                elif e.key == pygame.K_l:
+                    bodies = load_system()
+                    trails.clear()
+                elif e.key == pygame.K_s:
+                    save_system(bodies)
                 if e.key == pygame.K_ESCAPE:
                     exit()
 
