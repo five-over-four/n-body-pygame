@@ -23,8 +23,8 @@ class Settings:
         self.load()
         self.softening_constant = 15 # avoids singularities in our gravity modelling.
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.gravity_constant = 1 # strength of gravity
-        self.shot_factor = 5 # for some reason, the strength of the shot depends on gravity.
+        self.gravity_constant = 10 # strength of gravity
+        self.shot_factor = 0.4 # for some reason, the strength of the shot depends on gravity.
     
     def load(self):
         if self.config_file:

@@ -5,7 +5,7 @@
     "resolution": "1280,720",
     "sim_precision": "100",
     "trail_density": "3",
-    "trail_length": "100",
-    "default_mass": "32",
-    "realistic_gravity": "0"
+    "trail_length": "50",
+    "default_mass": "128",
+    "realistic_gravity": "1"
 }
