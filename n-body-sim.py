@@ -97,9 +97,8 @@ def tick(bodies):
             body_a.a_x, body_a.a_y = accel
             body_b.a_x, body_b.a_y = accel
         visited.add(body_a)
-    for body in bodies: # for precision, we must move all bodies after the computations. +n to time complexity.
+    for body in bodies:
         body.move()
-        pygame.draw.circle(screen, settings.body_colour, (body.x, body.y), 5)
 
 # returns softening factor based on distance.
 def softening_kernel(d): 
@@ -159,8 +158,11 @@ def main(settings, screen):
         screen.fill(settings.bg_colour)
 
         # iterate body positions, velcities, accelerations, and draw.
-        if bodies and not paused:
-            tick(bodies)
+        if bodies:
+            if not paused:
+                tick(bodies)
+            for body in bodies: # for precision, we must move all bodies after the computations. +n to time complexity.
+                pygame.draw.circle(screen, settings.body_colour, (body.x, body.y), 5)
 
         # make trails and drop fading tail end.
         if counter % settings.trail_density == 0 and not paused:
