@@ -23,7 +23,7 @@ class Settings:
         self.load()
         self.softening_constant = 15 # avoids singularities in our gravity modelling.
         self.center = self.resolution[0]/2, self.resolution[1]/2
-        self.gravity_constant = 0.01 # strength of gravity
+        self.gravity_constant = 1 # strength of gravity
         self.shot_factor = 5 # for some reason, the strength of the shot depends on gravity.
     
     def load(self):
@@ -37,7 +37,7 @@ class Settings:
                 self.body_colour = colours[s["body_colour"]]
                 self.trail_colour = colours[s["trail_colour"]]
                 self.resolution = (int(res_temp[0]), int(res_temp[1]))
-                self.fps = int(s["framerate"])
+                self.fps = int(s["sim_precision"])
                 self.trail_density = int(s["trail_density"])
                 self.trail_length = int(s["trail_length"])
                 self.default_mass = int(s["default_mass"])
@@ -89,8 +89,8 @@ class Body:
         self.move(accel)
 
     def move(self, acceleration):
-        self.x += (self.v_x + acceleration[0]/(2*settings.fps)) * settings.gravity_constant
-        self.y += (self.v_y + acceleration[1]/(2*settings.fps)) * settings.gravity_constant
+        self.x += (self.v_x / settings.fps + acceleration[0]/(2*settings.fps**2)) * settings.gravity_constant
+        self.y += (self.v_y / settings.fps + acceleration[1]/(2*settings.fps**2)) * settings.gravity_constant
 
 # returns softening factor based on distance.
 def softening_kernel(d): 
@@ -211,11 +211,11 @@ def main(settings, screen):
                 elif e.key == pygame.K_r:
                     settings.realistic_gravity ^= True
                     if settings.realistic_gravity:
-                        settings.gravity_constant = 0.1
-                        settings.shot_factor = 0.18
+                        settings.gravity_constant = 10
+                        settings.shot_factor = 0.4
                         print("realistic gravity on. (1/r^2)")
                     else:
-                        settings.gravity_constant = 0.01
+                        settings.gravity_constant = 1
                         settings.shot_factor = 5
                         print("realistic gravity off. (1/r)")
                 elif e.key == pygame.K_PLUS:
