@@ -5,8 +5,8 @@ import json, os
 # colour standards. chosen in settings.json.
 colours = { "black": (0,0,0), "white": (255,255,255), "red": (255,0,0), \
             "green": (0,255,0), "blue": (0,0,255), "purple": (170,0,255), \
-            "yellow": (255,255,0), "dark_red": (40,0,0), "dark_green": (0,40,0), \
-            "dark_blue": (0,0,40), "grey": (130,130,130), "dark_grey": (30,30,30)
+            "yellow": (255,255,0), "dark red": (40,0,0), "dark green": (0,40,0), \
+            "dark blue": (0,0,40), "grey": (130,130,130), "dark grey": (30,30,30)
           }
 
 # global settings singleton.
@@ -208,24 +208,33 @@ def main(settings, screen):
                     paused ^= True
                 elif e.key == pygame.K_f:
                     center_COM_toggle ^= True
+                    print(f"Camera following on.") if center_COM_toggle else print(f"Camera following off.")
                 elif e.key == pygame.K_r:
                     settings.realistic_gravity ^= True
                     if settings.realistic_gravity:
                         settings.gravity_constant = 10
                         settings.shot_factor = 0.4
-                        print("realistic gravity on. (1/r^2)")
+                        for body in bodies:
+                            body.v_x /= 10
+                            body.v_y /= 10
+                        print("Realistic gravity on. (1/r^2)")
                     else:
                         settings.gravity_constant = 1
                         settings.shot_factor = 5
-                        print("realistic gravity off. (1/r)")
+                        for body in bodies:
+                            body.v_x *= 10
+                            body.v_y *= 10
+                        print("Realistic gravity off. (1/r)")
                 elif e.key == pygame.K_PLUS:
                     settings.default_mass *= 2
                 elif e.key == pygame.K_MINUS:
                     settings.default_mass *= 1/2 if settings.default_mass > 1 else 1
                 elif e.key == pygame.K_l:
                     bodies = load_system()
+                    print("System loaded.")
                 elif e.key == pygame.K_s:
                     save_system(bodies)
+                    print("System saved.")
                 if e.key == pygame.K_ESCAPE:
                     exit()
                 update_caption(paused)
