@@ -66,31 +66,40 @@ class Body:
         self.m = m
         self.v_x = v_x # velocity components.
         self.v_y = v_y
+        self.a_x = 0 # acceleration components.
+        self.a_y = 0
         self.trail = deque([]) # fast removal of first element.
         self.trail_length = 0 # bit more efficient than computing len.
 
-    def acceleration(self, other):
-        diff_vec = (self.x - other.x, self.y - other.y)
-        norm = (self.x-other.x)**2 + (self.y-other.y)**2
-        kernel = softening_kernel(norm)**2
-        if not settings.realistic_gravity:
-            return (diff_vec[0]/(norm+kernel), diff_vec[1]/(norm+kernel))
-        else:
-            return (diff_vec[0]/(norm+kernel)**(3/2), diff_vec[1]/(norm+kernel)**(3/2))
+    def move(self): # straight up (vt + 1/2at^2)G.
+        self.x += (self.v_x / settings.fps + self.a_x/(2*settings.fps**2)) * settings.gravity_constant
+        self.y += (self.v_y / settings.fps + self.a_y/(2*settings.fps**2)) * settings.gravity_constant
 
-    def tick(self, others):
-        accel = (0,0)
-        for body in others:
-            if body == self:
+# O(n^2/2+n) = O(n^2) algorithm for moving bodies. atrocious. practically a bit faster than just n^2 double looping.
+def tick(bodies):
+    visited = {bodies[0]}
+    accel = (0,0)
+    for body_a in bodies:
+        for body_b in bodies:
+            if body_b in visited:
                 continue
-            accel = self.acceleration(body)
-            self.v_x += -body.m * accel[0]
-            self.v_y += -body.m * accel[1]
-        self.move(accel)
-
-    def move(self, acceleration):
-        self.x += (self.v_x / settings.fps + acceleration[0]/(2*settings.fps**2)) * settings.gravity_constant
-        self.y += (self.v_y / settings.fps + acceleration[1]/(2*settings.fps**2)) * settings.gravity_constant
+            diff_x, diff_y = body_a.x - body_b.x, body_a.y - body_b.y
+            norm = diff_x**2 + diff_y**2
+            kernel = softening_kernel(norm)**2
+            if not settings.realistic_gravity:
+                accel = (diff_x/(norm+kernel), diff_y/(norm+kernel))
+            else:
+                accel = (diff_x/(norm+kernel)**1.5, diff_y/(norm+kernel)**1.5)
+            body_a.v_x += -body_b.m * accel[0]
+            body_a.v_y += -body_b.m * accel[1]
+            body_b.v_x += body_a.m * accel[0]
+            body_b.v_y += body_a.m * accel[1]
+            body_a.a_x, body_a.a_y = accel
+            body_b.a_x, body_b.a_y = accel
+        visited.add(body_a)
+    for body in bodies: # for precision, we must move all bodies after the computations. +n to time complexity.
+        body.move()
+        pygame.draw.circle(screen, settings.body_colour, (body.x, body.y), 5)
 
 # returns softening factor based on distance.
 def softening_kernel(d): 
@@ -128,7 +137,7 @@ def update_caption(paused):
 
 def remove_body(pos, bodies):
     for body in bodies:
-        if ((pos[0] - body.x)**2 + (pos[1] - body.y)**2)**(1/2) <= 5:
+        if ((pos[0] - body.x)**2 + (pos[1] - body.y)**2)**0.5 <= 5:
             bodies.remove(body)
             break
     return bodies
@@ -139,7 +148,7 @@ def main(settings, screen):
     bodies = []
     shot = None                 # position of the placed body.
     mouse_toggle = False
-    center_COM_toggle = True    # system CENTER OF MASS is always kept centered.
+    center_COM_toggle = True    # system mean position is always kept centered.
     paused = False
     counter = 0                 # modular with trail_density.
     body_removal_timer = 200    # in frames.
@@ -149,11 +158,9 @@ def main(settings, screen):
 
         screen.fill(settings.bg_colour)
 
-        # draw and iterate the bodies.
-        for body in bodies:
-            if not paused:
-                body.tick(bodies)
-            pygame.draw.circle(screen, settings.body_colour, (body.x, body.y), 5)
+        # iterate body positions, velcities, accelerations, and draw.
+        if bodies and not paused:
+            tick(bodies)
 
         # make trails and drop fading tail end.
         if counter % settings.trail_density == 0 and not paused:
@@ -214,16 +221,17 @@ def main(settings, screen):
                     if settings.realistic_gravity:
                         settings.gravity_constant = 10
                         settings.shot_factor = 0.4
+                        # this is done because gravity is now 10x stronger and velocities are added based on gravity.
                         for body in bodies:
-                            body.v_x /= 10
-                            body.v_y /= 10
+                            body.v_x /= settings.gravity_constant
+                            body.v_y /= settings.gravity_constant
                         print("Realistic gravity on. (1/r^2)")
                     else:
+                        for body in bodies:
+                            body.v_x *= settings.gravity_constant
+                            body.v_y *= settings.gravity_constant
                         settings.gravity_constant = 1
                         settings.shot_factor = 5
-                        for body in bodies:
-                            body.v_x *= 10
-                            body.v_y *= 10
                         print("Realistic gravity off. (1/r)")
                 elif e.key == pygame.K_PLUS:
                     settings.default_mass *= 2
@@ -270,7 +278,6 @@ def main(settings, screen):
         counter = (counter + 1) % settings.trail_density
         pygame.display.flip()
         clock.tick(settings.fps)
-
 
 if __name__ == "__main__":
 
